@@ -1,0 +1,118 @@
+from __future__ import annotations
+
+from typing import Dict
+
+import pandas as pd
+import streamlit as st
+
+
+def render_dashboard(state) -> None:
+    st.subheader("National dashboard")
+    kpi_row = {
+        "GDP Growth": state.kpis.get("gdp_growth", 50.0),
+        "Inflation": state.kpis.get("inflation", 50.0),
+        "Debt Ratio": state.kpis.get("debt_ratio", 50.0),
+        "Military Readiness": state.kpis.get("military_readiness", 50.0),
+        "Public Approval": state.kpis.get("public_approval", 50.0),
+        "Sectarian Stability": state.kpis.get("sectarian_stability", 50.0),
+        "International Law": state.kpis.get("international_law", 50.0),
+        "Food Security": state.kpis.get("food_security", 50.0),
+        "Energy Security": state.kpis.get("energy_security", 50.0),
+        "Digital Sovereignty": state.kpis.get("digital_sovereignty", 50.0),
+    }
+
+    cols = st.columns(5)
+    for idx, (label, value) in enumerate(kpi_row.items()):
+        cols[idx % 5].metric(label=label, value=f"{value:.1f}")
+
+    st.markdown("---")
+
+    sector_names = [
+        "Macroeconomics & Public Finance",
+        "Military Defense & National Security",
+        "Foreign Policy & Geopolitics",
+        "Tech, Science & Digital Sovereignty",
+        "Health, Society & Human Capital",
+        "Agriculture, Food & Water Security",
+        "Energy, Mining & Infrastructure",
+        "Governance, Judiciary & Internal Politics",
+        "Tourism, Aviation & Foreign Trade",
+        "Crisis Management, Environment & Disasters",
+    ]
+
+    sector_scores = []
+    for sector in sector_names:
+        score = 0.0
+        for key, value in state.metrics.items():
+            if key.startswith(f"{sector.lower()}::"):
+                score += value
+        if score:
+            sector_scores.append((sector, score / 50.0))
+        else:
+            sector_scores.append((sector, state.kpis.get("gdp_growth", 50.0)))
+
+    chart_df = pd.DataFrame(sector_scores, columns=["Sector", "Score"])
+    st.subheader("10-sector performance map")
+    st.bar_chart(chart_df.set_index("Sector"), height=350)
+
+    with st.expander("Budget allocation controls"):
+        default_allocations = {
+            "macro": 22,
+            "security": 18,
+            "diplomacy": 13,
+            "technology": 12,
+            "society": 10,
+            "food": 8,
+            "energy": 8,
+            "governance": 5,
+            "trade": 3,
+            "crisis": 1,
+        }
+        allocations = {}
+        for key, label in {
+            "macro": "Macroeconomics",
+            "security": "Defense",
+            "diplomacy": "Diplomacy",
+            "technology": "Technology",
+            "society": "Society",
+            "food": "Food & Water",
+            "energy": "Energy",
+            "governance": "Governance",
+            "trade": "Trade & Tourism",
+            "crisis": "Crisis",
+        }.items():
+            allocations[key] = st.slider(f"{label} budget share (%)", 0, 40, default_allocations[key], key=f"budget_{key}")
+        st.session_state["budget_allocations"] = allocations
+
+    st.subheader("Strategic log")
+    for entry in state.event_log[-8:]:
+        st.write(f"• {entry}")
+
+    st.subheader("Hidden risk indicators")
+    hidden_df = pd.DataFrame(
+        {
+            "Indicator": ["Public Discontent", "Religious Friction", "Law Violations", "Ecological Damage", "Proxy War Influence", "Implementation Lag Queue"],
+            "Score": [
+                state.hidden.get("public_discontent", 0.0),
+                state.hidden.get("religious_friction", 0.0),
+                state.hidden.get("international_law_violations", 0.0),
+                state.hidden.get("ecological_damage", 0.0),
+                state.hidden.get("proxy_war_influence", 0.0),
+                state.hidden.get("implementation_lag_queue", 0.0),
+            ],
+        }
+    )
+    st.bar_chart(hidden_df.set_index("Indicator"), height=260)
+
+    st.subheader("AI actor posture")
+    actor_rows = []
+    for name, actor in state.ai_actors.items():
+        actor_rows.append({
+            "Actor": name,
+            "Aggression": actor.aggression,
+            "Influence": actor.influence,
+            "Military": actor.military_strength,
+            "Trade": actor.trade_volume,
+            "Diplomacy": actor.diplomatic_weight,
+        })
+    st.dataframe(pd.DataFrame(actor_rows), use_container_width=True)
